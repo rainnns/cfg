@@ -1,0 +1,162 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace id_name
+{
+    public partial class Form1 : Form
+    {
+
+        Graphics g;
+        Dictionary<string, PointF> pointclloects = new Dictionary<string, PointF>();
+        Dictionary<string, PointF> ConvertPoints = new Dictionary<string, PointF>();
+        public Form1()
+        {
+            InitializeComponent();
+            g = CreateGraphics();
+            string filepath = Application.StartupPath + "\\points.txt";
+
+            pointclloects = LoadData(filepath);
+            ConvertPoints = ConvertToEearthCor(pointclloects,GetFormArcs());
+
+
+        }
+
+        private float[] GetFormArcs()
+        {   float Top = 0;
+            float Left = 0;
+            float Down = 0;
+            float Right = 0;
+            float width;
+            float height;
+            int count = 0 ;
+            foreach (var point in pointclloects.Values){
+                if(count == 0)
+                {
+                    Left = point.X;
+                    Right = point.X;
+                    Top = point.Y;
+                    Down = point.Y;
+                    count++;
+                    continue;
+                }
+                if (Left > point.X)
+                {
+                    Left = point.X;
+                }
+                if (Right < point.X)
+                {
+                    Right = point.X;
+                }
+                if (Top < point.Y)
+                {
+                    Top = point.Y;
+                }
+                if (Down > point.Y)
+                {
+                    Down = point.Y;
+                }
+            }
+            width = Right - Left;
+            height = Top - Down;
+
+            float[] FormArcs = { Left, Top, width, height };
+            return FormArcs;
+        }
+
+        private Dictionary<string, PointF> ConvertToEearthCor(Dictionary<string, PointF> pointColl,float []formArcs)
+        {
+            Dictionary<string, PointF> ConvertedPoint = new Dictionary<string, PointF>();
+            float Top = formArcs[1];
+            float Left = formArcs[0];
+            float width = formArcs[2];
+            float height = formArcs[3];
+
+           // MessageBox.Show(Top + " " + Left + " " + width + " " + height);
+
+            foreach(var point in pointColl)
+            {
+                string key = point.Key;
+                PointF p = point.Value;
+                p.X = (p.X - Left)/width*(this.Width+80);
+                p.Y = (Top - p.Y) / height*(this.Height-50);
+                ConvertedPoint.Add(key, p);
+            }
+
+            return ConvertedPoint;
+        }
+
+        private Dictionary<string,PointF> LoadData(string path)
+        {
+            StreamReader sr = new StreamReader(path, Encoding.Default);
+            int currentline = 0;
+            char[]splits ={'\t','\n'};
+            while(sr.Peek() > -1)
+            {   
+                if(currentline == 0)
+                {
+                    sr.ReadLine();
+                    currentline++;
+                    continue;
+                }
+                string datas = sr.ReadLine();
+                string []content = datas.Split(splits);
+                string key = content[0] +" " +content[1];
+                float pointx = (float)Convert.ToDouble(content[2]);
+                float pointy = (float)Convert.ToDouble(content[3]);
+                PointF p = new PointF(pointx, pointy);
+                pointclloects.Add(key, p);
+                currentline++;
+
+            }
+            return pointclloects;
+            
+
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        protected override void OnMouseClick(MouseEventArgs e)
+        {
+            string key;
+            float x;
+            float y;
+            foreach(var point in ConvertPoints)
+            {
+                if (Math.Abs(e.Location.X - point.Value.X) < 8 && Math.Abs(e.Location.Y - point.Value.Y) < 8)
+                {
+                    key = point.Key;
+                    x = pointclloects[key].X;
+                    y = pointclloects[key].Y;
+                    MessageBox.Show(key + " " + x + " " + y);
+                    break;
+                }
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Pen p = new Pen(Color.Red,50);
+            p.DashStyle = System.Drawing.Drawing2D.DashStyle.Custom;
+            foreach(var point in ConvertPoints.Values)
+            {
+                g.FillEllipse(Brushes.Black, point.X, point.Y, 10, 10);
+            }
+
+
+            p.Dispose();
+        }
+
+
+    }
+}
